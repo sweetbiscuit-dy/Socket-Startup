@@ -36,7 +36,12 @@ int main(int argc, char ** argv) {
      * the useage of INADDR_ANY: it's 0.0.0.0 after convertion which means all IPs of the local machine, because
      * the machine might be equipped with multiple NICs. 
      * suppose that the machine has three NICs which are connected to three different networks, then the machine
-     * has three different ip addresses. if an app needs to
+     * has three different ip addresses. if an app needs to listen to a certain port, which NIC should it monitor?
+     * if the socket binds to a specific ip address, the app can only monitor the port of the NIC to which the ip
+     *  address attatches. if you want to monitor all three NICs, you should bind three ip addresses and this equals
+     * to manage three sockets which is rather complicated.
+     * so there is INADDR_ANY, you only need to bind the socket to INADDR_ANY and manage only one socket. no matter
+     * from which NIC the data arrives, socket can receive it from certain port. 
      */
     local_addr.sin_addr.s_addr = INADDR_ANY;
 
