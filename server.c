@@ -44,6 +44,89 @@ int main(int argc, char ** argv) {
      * from which NIC the data arrives, socket can receive it from certain port. 
      */
     local_addr.sin_addr.s_addr = INADDR_ANY;
+    bzero(&(local_addr.sin_zero), sizeof local_addr.sin_zero);
+    if(bind(serverfd, (struct sockaddr *)&local_addr, sizeof(struct sockaddr)) == -1) {
+        perror("bind failure");
+        return -2;
+    }
+    printf("bind is ok\n");
 
+    if(listen(serverfd, listen_num) == -1) {
+        perror("listen failure");
+        return -3;
+    }
+    printf("listen is ok\n");
 
+    fd_set client_fdset; // the set of monitoring file desceiptors
+    int maxsock; // the largest number of monitoring file desceiptors
+    struct timeval tv; // timeout
+    int client_sockfd[5]; // active sockfd
+    bzero((void *)client_sockfd, sizeof(client_sockfd));
+    int conn_amount = 0; // the number of descriptors
+    maxsock = serverfd;
+    char buffer[1024]; // recv buffer
+    int ret = 0;
+
+    while(1) {
+        FD_ZERO(&client_fdset); // initialization
+        FD_SET(serverfd, &client_fdset);
+        // set the timeout value to be 30 sec
+        tv.tv_sec = 30;
+        tv.tv_usec = 0;
+
+        // 
+        for(int i = 0; i < 5; i++) {
+            if(client_sockfd[i] != 0) {
+                FD_SET(client_sockfd[i], &client_fdset);
+            }
+        }
+        printf("put sockfd in fdset\n");
+
+        // int select(int maxfdp, fd_set *readfds, fd_set *writefds, fd_set *errorfds, struct timeval *timeout);
+        ret = select(maxsock + 1, &client_fdset, NULL, NULL, &tv);
+        if(ret < 0) { // error case
+            perror("select error\n");
+            break;
+        }
+        else if (ret == 0) { // timeout case
+            printf("timeout\n");
+        }
+
+        // ret is a positive integer, now polling every file descriptor
+        for(int i = 0; i < conn_amount; i++) {
+            // check if the client_sockfd[i] in the client_fdset is readable
+            if(FD_ISSET(client_sockfd[i], &client_fdset)) {
+                printf("start to rece from client [%d] :\n", i);
+                /** prototype： int recv(SOCKET S, char FAR *buf, int len, int flags);
+                 * s: the peer socket descriptor
+                 * buf: buffer area, stores the data received from the recv function
+                 * flag: usually set to 0
+                 */
+                ret = recv(client_sockfd[i], buffer, 1024, 0);
+                if(ret <= 0) {
+                    printf("client [%d] closes\n", i);
+                    close(client_sockfd[i]);
+                    FD_CLR(client_sockfd[i], &client_fdset);
+                    client_sockfd[i] = 0;
+                }
+                else {
+                    printf("recv from client [%d] : %s\n", i, buffer);
+                }
+            }
+        }
+
+        // check if there is a new connection request. if there is, make the connection and add it to the client_sockfd
+        if(FD_ISSET(serverfd, &client_fdset)) {
+            // accept the connection
+            struct sockaddr_in client_addr;
+            size_t size = sizeof (struct sockaddr_in);
+            int sock_client = accept(serverfd, (struct sockaddr*)(&client_addr), (unsigned int*)(&size));
+            if(sock_client < 0) {
+                perror("accept failure\n");
+                continue;
+            }
+
+            
+        }
+    }
 }
