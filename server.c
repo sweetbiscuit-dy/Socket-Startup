@@ -126,7 +126,38 @@ int main(int argc, char ** argv) {
                 continue;
             }
 
-            
+            if(conn_amount < 5) {
+                client_sockfd[conn_amount++] = sock_client;
+                bzero(buffer, sizeof(buffer));
+                strcpy(buffer, "this is the server! welcome\n");
+                send(sock_client, buffer, 1024, 0);
+                printf("new connection client [%d] %s: %d\n", conn_amount, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+                bzero(buffer, sizeof(buffer));
+                ret = recv(sock_client, buffer, sizeof(buffer), 0);
+
+                if(ret < 0) {
+                    perror("recv error!\n");
+                    close(serverfd);
+                    return -1;
+                }
+                printf("recv : %s\n", buffer);
+
+                if(sock_client > maxsock) {
+                    maxsock = sock_client;
+                }
+                else {
+                    printf("max connections. quit\n");
+                    break;
+                }
+            }
         }
     }
+
+    for(int i = 0; i < 5; i++) {
+        if(client_sockfd[i] != 0) {
+            close(client_sockfd[i]);
+        }
+    }
+    close(serverfd);
+    return 0;
 }
